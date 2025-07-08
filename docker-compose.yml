@@ -29,8 +29,8 @@ services:
       - postgres
     networks:
       - app-network
-    volumes:
-      - .:/app
+    # volumes:
+    #   - ./:/app
 
   rinha-api-2:
     build:
@@ -47,8 +47,8 @@ services:
       - postgres
     networks:
       - app-network
-    volumes:
-      - .:/app
+    # volumes:
+    #   - ./:/app
 
   redis:
     image: redis:7.2.4-alpine
