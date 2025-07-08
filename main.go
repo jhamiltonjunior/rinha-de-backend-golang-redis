@@ -61,7 +61,6 @@ func main() {
 		fmt.Fprintf(ctx, "Hello World from fasthttp!\nContainer: %s\nSuccessfully connected to PostgreSQL and NATS!", hostname)
 	}
 
-	
 	log.Printf("Server starting with fasthttp on port %s", appPort)
 	if err := fasthttp.ListenAndServe(":" + appPort, requestHandler); err != nil {
 		log.Fatalf("fasthttp.ListenAndServe error: %v", err)
