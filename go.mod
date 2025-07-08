@@ -3,6 +3,7 @@ module github.com/jhamiltonjunior/rinha-de-backend
 go 1.24.0
 
 require (
+	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.9
 	github.com/nats-io/nats.go v1.43.0
 	github.com/valyala/fasthttp v1.63.0

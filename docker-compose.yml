@@ -17,32 +17,38 @@ services:
   rinha-api-1:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: rinha-api-1
     environment:
-      - APP_PORT=:${APP_PORT}
+      - APP_PORT=${APP_PORT}
       - REDIS_ADDR=${REDIS_ADDR}
-      - POSTGRES_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable
+      - POSTGRES_URL=${POSTGRES_URL}
+      - NATS_URL=${NATS_URL}
     depends_on:
       - redis
       - postgres
     networks:
       - app-network
+    volumes:
+      - .:/app
 
   rinha-api-2:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: rinha-api-2
     environment:
-      - APP_PORT=:${APP_PORT}
+      - APP_PORT=${APP_PORT}
       - REDIS_ADDR=${REDIS_ADDR}
-      - POSTGRES_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable
+      - POSTGRES_URL=${POSTGRES_URL}
+      - NATS_URL=${NATS_URL}
     depends_on:
       - redis
       - postgres
     networks:
       - app-network
+    volumes:
+      - .:/app
 
   redis:
     image: redis:7.2.4-alpine
