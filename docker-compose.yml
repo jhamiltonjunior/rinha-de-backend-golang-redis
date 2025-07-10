@@ -20,10 +20,10 @@ services:
       dockerfile: Dockerfile.dev
     container_name: rinha-api-1
     environment:
-      - APP_PORT=${APP_PORT}
-      - REDIS_ADDR=${REDIS_ADDR}
-      - POSTGRES_URL=${POSTGRES_URL}
-      - NATS_URL=${NATS_URL}
+      - APP_PORT=3000
+      - REDIS_ADDR=redis:6379
+      - POSTGRES_URL=postgres://user:password-very-har@postgres:5432/rinha_de_backend?sslmode=disable
+      - NATS_URL=nats://nats:4222
       - PAYMENT_PROCESSOR_URL_DEFAULT=http://payment-processor-default:8080
       - PAYMENT_PROCESSOR_URL_FALLBACK=http://payment-processor-fallback:8080
     depends_on:
