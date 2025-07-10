@@ -4,13 +4,11 @@ import (
 	"github.com/valyala/fasthttp"
 )
 
-func Request(method string, json []byte) ([]byte, int) {
+func Request(method string, json []byte, reqURL string) ([]byte, int) {
 	client := &fasthttp.Client{}
 	if method == "" {
 		method = "GET"
 	}
-
-	reqURL := "http://payment-processor-default:8080/payments"
 
 	req := fasthttp.AcquireRequest()
 	defer fasthttp.ReleaseRequest(req)
