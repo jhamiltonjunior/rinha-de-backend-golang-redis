@@ -23,6 +23,8 @@ func Payments(ctx *fasthttp.RequestCtx) {
 
 	fmt.Println("Recebendo pagamento:", string(paymentBytes))
 
+	rever o request talvez seja melhor usar o http.Post do net/http
+
 	body, statusCode := utils.Request("POST", paymentBytes)
 	if statusCode < 200 || statusCode > 299 {
 		sendJSONResponse(ctx, statusCode)
