@@ -10,9 +10,9 @@ import (
 func ListenAndServe(appPort, postgresURL, natsURL string) {
 	r := router.New()
 
-	r.POST("/payments", handler.HomeHandler)
-	r.GET("/payments-summary", handler.HomeHandler)
-	r.POST("/purge-payments", handler.HomeHandler)
+	r.POST("/payments", handler.Payments)
+	// r.GET("/payments-summary", handler.Payments)
+	// r.POST("/purge-payments", handler.Payments)
 
 	fmt.Println("Servidor rodando em http://localhost:" + appPort)
 	fasthttp.ListenAndServe(":" + appPort, r.Handler)

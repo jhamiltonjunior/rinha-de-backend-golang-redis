@@ -24,11 +24,14 @@ services:
       - REDIS_ADDR=${REDIS_ADDR}
       - POSTGRES_URL=${POSTGRES_URL}
       - NATS_URL=${NATS_URL}
+      - PAYMENT_PROCESSOR_URL_DEFAULT=http://payment-processor-default:8080
+      - PAYMENT_PROCESSOR_URL_FALLBACK=http://payment-processor-fallback:8080
     depends_on:
       - redis
       - postgres
     networks:
       - app-network
+      - payment-processor
     volumes:
       - ./:/app
 
@@ -94,6 +97,8 @@ services:
 networks:
   app-network:
     driver: bridge
+  payment-processor:
+    external: true
 
 volumes:
   postgres_data:
