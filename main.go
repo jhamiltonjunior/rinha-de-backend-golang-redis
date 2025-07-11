@@ -5,11 +5,12 @@ import (
 	"os"
 
 	"github.com/jhamiltonjunior/rinha-de-backend/app/server"
+	"github.com/jhamiltonjunior/rinha-de-backend/app/worker"
 	_ "github.com/lib/pq"
 )
 
 func main() {
-	// Load environment variables
+	worker.InitializeWorker()
 
 	appPort := os.Getenv("APP_PORT")
 	if appPort == "" {

@@ -50,6 +50,7 @@ services:
       - postgres
     networks:
       - app-network
+      - payment-processor
     volumes:
       - ./:/app
 

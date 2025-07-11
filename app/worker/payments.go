@@ -10,42 +10,30 @@ import (
 	"github.com/jhamiltonjunior/rinha-de-backend/app/utils"
 )
 
-type Worker struct{
-	ID   int
-	Data string
+type PaymentWorker struct {
+	Body map[string]any
 }
 
 var (
-	queueJob   = make(chan Worker, 1000)
+	Queue = make(chan PaymentWorker, 1000)
 )
 
 func InitializeWorker() {
-	const numWorkers = 1000 
+	const numWorkers = 1000
 
 	for i := 1; i <= numWorkers; i++ {
 		go func(id int) {
-			for job := range queueJob {
-				log.Printf("[Worker %d] job #%d (%s)\n", id, job.ID, job.Data)
-				time.Sleep(2 * time.Second)
-				log.Printf("[Worker %d] job #%d\n", id, job.ID)
+			for payment := range Queue {
+				log.Printf("[Worker %d] job #%s (%s)\n", id, payment.Body["correlationId"], payment.Body["amount"])
 			}
 		}(i)
 	}
-
-	log.Printf("🚀 %d workers tests\n", numWorkers)
 }
 
-func registerPayment(paymentBytes []byte, defaultURL bool) {
+func registerPayment(paymentBytes []byte) {
 	reqURL := os.Getenv("PAYMENT_PROCESSOR_URL_DEFAULT")
-	if !defaultURL {
-		reqURL = os.Getenv("PAYMENT_PROCESSOR_URL_FALLBACK")
-	}
-
-	_, statusCode := utils.Request("POST", paymentBytes, reqURL)
-	if statusCode < 200 || statusCode > 299 {
-		registerPayment(paymentBytes, !defaultURL)
-		return
-	}
+	_, status := utils.Request("POST", paymentBytes, reqURL+"/payments")
+	fmt.Printf("status: %d\n", status)
 }
 
 func ProcessPayment(paymentBytes []byte) {
@@ -55,7 +43,11 @@ func ProcessPayment(paymentBytes []byte) {
 	}
 
 	now := time.Now().UTC()
-	payment["requestedAt"] = now
+	payment["requestedAt"] = now.Format(time.RFC3339Nano)
+
+	Queue <- PaymentWorker{
+		Body: payment,
+	}
 
 	paymentBytes, err := json.Marshal(payment)
 	if err != nil {
@@ -63,5 +55,5 @@ func ProcessPayment(paymentBytes []byte) {
 		return
 	}
 
-	registerPayment(paymentBytes, true)
+	registerPayment(paymentBytes)
 }
