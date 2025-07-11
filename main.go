@@ -4,13 +4,16 @@ import (
 	"log"
 	"os"
 
+	"github.com/jhamiltonjunior/rinha-de-backend/app/database"
 	"github.com/jhamiltonjunior/rinha-de-backend/app/server"
 	"github.com/jhamiltonjunior/rinha-de-backend/app/worker"
 	_ "github.com/lib/pq"
 )
 
 func main() {
-	worker.InitializeWorker()
+	client := database.InitializeMongoDB()
+
+	worker.InitializeWorker(client)
 
 	appPort := os.Getenv("APP_PORT")
 	if appPort == "" {
@@ -27,5 +30,5 @@ func main() {
 		log.Fatal("NATS_URL environment variable is not set")
 	}
 
-	server.ListenAndServe(appPort, postgresURL, natsURL)
+	server.ListenAndServe(appPort, natsURL)
 }

@@ -28,7 +28,7 @@ services:
       - PAYMENT_PROCESSOR_URL_FALLBACK=http://payment-processor-fallback:8080
     depends_on:
       - redis
-      - postgres
+      - mongodb
     networks:
       - app-network
       - payment-processor
@@ -47,7 +47,7 @@ services:
       - NATS_URL=${NATS_URL}
     depends_on:
       - redis
-      - postgres
+      - mongodb
     networks:
       - app-network
       - payment-processor
@@ -60,18 +60,6 @@ services:
     networks:
       - app-network
 
-  postgres:
-    image: postgres:16.1-alpine
-    container_name: postgres_db
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - app-network
-
   nats:
     image: nats:2.10.14-alpine
     container_name: nats_server
@@ -81,17 +69,31 @@ services:
       - "8222:8222"
     networks:
       - app-network
-
-  pgadmin:
-    image: dpage/pgadmin4:8.4
-    container_name: pgadmin_gui
-    environment:
-      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL}
-      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}
+  
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    restart: always
     ports:
-      - "5050:80"
-    depends_on:
-      - postgres
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - app-network
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: mongo-express
+    restart: always
+    ports:
+      - "5051:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: example
+      ME_CONFIG_MONGODB_SERVER: mongodb
     networks:
       - app-network
 
@@ -103,3 +105,4 @@ networks:
 
 volumes:
   postgres_data:
+  mongo_data:

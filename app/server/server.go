@@ -7,7 +7,7 @@ import (
 	"github.com/jhamiltonjunior/rinha-de-backend/app/handler"
 	"github.com/valyala/fasthttp"
 )
-func ListenAndServe(appPort, postgresURL, natsURL string) {
+func ListenAndServe(appPort, natsURL string) {
 	r := router.New()
 
 	r.POST("/payments", handler.Payments)

@@ -7,7 +7,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/jhamiltonjunior/rinha-de-backend/app/database"
 	"github.com/jhamiltonjunior/rinha-de-backend/app/utils"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type PaymentWorker struct {
@@ -18,13 +20,14 @@ var (
 	Queue = make(chan PaymentWorker, 1000)
 )
 
-func InitializeWorker() {
+func InitializeWorker(client *mongo.Client) {
 	const numWorkers = 1000
 
 	for i := 1; i <= numWorkers; i++ {
 		go func(id int) {
 			for payment := range Queue {
-				log.Printf("[Worker %d] job #%s (%s)\n", id, payment.Body["correlationId"], payment.Body["amount"])
+				database.CreatePaymentHistory(client, payment.Body, "default")
+				log.Printf("%d\n", payment.Body["amount"])
 			}
 		}(i)
 	}
