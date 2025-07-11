@@ -30,9 +30,8 @@ export default function () {
     },
   };
 
-  const response = http.post("http://localhost:9999", JSON.stringify(payload), params);
+  const response = http.post("http://nginx/payments", JSON.stringify(payload), params);
 
-  // Check if the response is successful
   check(response, {
     "status is 200-299": (r) => r.status >= 200 && r.status < 300,
     "response time < 500ms": (r) => r.timings.duration < 500,
