@@ -20,11 +20,6 @@ func main() {
 		appPort = "3000"
 	}
 
-	postgresURL := os.Getenv("POSTGRES_URL")
-	if postgresURL == "" {
-		log.Fatal("POSTGRES_URL environment variable is not set")
-	}
-
 	natsURL := os.Getenv("NATS_URL")
 	if natsURL == "" {
 		log.Fatal("NATS_URL environment variable is not set")

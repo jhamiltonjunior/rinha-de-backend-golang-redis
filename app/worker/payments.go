@@ -27,7 +27,7 @@ func InitializeWorker(client *mongo.Client) {
 		go func(id int) {
 			for payment := range Queue {
 				database.CreatePaymentHistory(client, payment.Body, "default")
-				log.Printf("%d\n", payment.Body["amount"])
+				log.Printf("%v\n", payment.Body["amount"])
 			}
 		}(i)
 	}

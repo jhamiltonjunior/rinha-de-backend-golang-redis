@@ -11,7 +11,7 @@ import (
 )
 
 func InitializeMongoDB() *mongo.Client {
-	uri := "mongodb://mongodb:27017"
+	uri := "mongodb://root:very_hard_password@mongodb:27017/?authSource=admin"
 
 	clientOptions := options.Client().ApplyURI(uri)
 
@@ -30,12 +30,19 @@ func CreatePaymentHistory(client *mongo.Client, paymentData map[string]interface
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	client.Database("meu_banco").Collection("payment_history").InsertOne(ctx, bson.M{
+
+
+	_, err := client.Database("payment").Collection("payment_history").InsertOne(ctx, bson.M{
 		"correlationId": paymentData["correlationId"],
 		"amount":        paymentData["amount"],
 		"requestedAt":   paymentData["requestedAt"],
-		"type":         typeService,
+		"type":          typeService,
 	})
 
-	return client.Database("meu_banco").Collection("payment_history")
+	if err != nil {
+		log.Printf("Erro ao inserir pagamento: %v", err)
+		return nil
+	}
+
+	return client.Database("payment").Collection("payment_history")
 }
