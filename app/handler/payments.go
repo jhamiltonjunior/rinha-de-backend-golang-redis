@@ -6,6 +6,17 @@ import (
 )
 
 func Payments(ctx *fasthttp.RequestCtx) {
-	sendJSONResponse(ctx, fasthttp.StatusAccepted)
-	go worker.ProcessPayment(ctx.PostBody())
+	bodyCopy := make([]byte, len(ctx.PostBody()))
+	copy(bodyCopy, ctx.PostBody())
+
+	paymentWorker := worker.PaymentWorker{
+		Body: bodyCopy,
+	}
+
+	select {
+	case worker.SegureOChann <- paymentWorker:
+		sendJSONResponse(ctx, fasthttp.StatusAccepted)
+	default:
+		sendJSONResponse(ctx, fasthttp.StatusTooManyRequests)
+	}
 }

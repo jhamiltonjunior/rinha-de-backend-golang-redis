@@ -13,6 +13,11 @@ services:
       - rinha-api-2
     networks:
       - app-network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.2"
+          memory: "15MB"
 
   rinha-api-1:
     build:
@@ -34,6 +39,11 @@ services:
       - payment-processor
     volumes:
       - ./:/app
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: "0.25"
+    #       memory: "55MB"
 
   rinha-api-2:
     build:
@@ -53,6 +63,11 @@ services:
       - payment-processor
     volumes:
       - ./:/app
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: "0.25"
+    #       memory: "55MB"
 
   redis:
     image: redis:7.2.4-alpine
@@ -60,16 +75,6 @@ services:
     networks:
       - app-network
 
-  nats:
-    image: nats:2.10.14-alpine
-    container_name: nats_server
-    ports:
-      - "4222:4222"
-      - "6222:6222"
-      - "8222:8222"
-    networks:
-      - app-network
-  
   mongodb:
     image: mongo:latest
     container_name: mongodb
