@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"os"
 
 	"github.com/jhamiltonjunior/rinha-de-backend/app/database"
@@ -20,10 +19,5 @@ func main() {
 		appPort = "3000"
 	}
 
-	natsURL := os.Getenv("NATS_URL")
-	if natsURL == "" {
-		log.Fatal("NATS_URL environment variable is not set")
-	}
-
-	server.ListenAndServe(appPort, natsURL)
+	server.ListenAndServe(appPort)
 }

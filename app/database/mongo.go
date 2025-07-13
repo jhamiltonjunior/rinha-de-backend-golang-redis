@@ -10,6 +10,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+var MongoClient *mongo.Client
+
 func InitializeMongoDB() *mongo.Client {
 	uri := "mongodb://root:very_hard_password@mongodb:27017/?authSource=admin"
 
@@ -23,14 +25,13 @@ func InitializeMongoDB() *mongo.Client {
 		log.Fatal(err)
 	}
 
+	MongoClient = client
 	return client
 }
 
 func CreatePaymentHistory(client *mongo.Client, paymentData map[string]interface{}, typeService string) *mongo.Collection {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-
-
 
 	_, err := client.Database("payment").Collection("payment_history").InsertOne(ctx, bson.M{
 		"correlationId": paymentData["correlationId"],
@@ -45,4 +46,29 @@ func CreatePaymentHistory(client *mongo.Client, paymentData map[string]interface
 	}
 
 	return client.Database("payment").Collection("payment_history")
+}
+
+func GetPaymentHistory(client *mongo.Client, from, to string) (map[string]any, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"requestedAt": bson.M{
+			"$gte": from,
+			"$lte": to,
+		},
+	}
+
+	cursor, err := client.Database("payment").Collection("payment_history").Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var results []bson.M
+	if err = cursor.All(ctx, &results); err != nil {
+		return nil, err
+	}
+
+	return map[string]any{"payments": results}, nil
 }
