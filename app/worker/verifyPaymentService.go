@@ -25,14 +25,6 @@ func worker(id int, jobs <-chan Job, clientRedis *redis.Client) {
 	defaultURL := os.Getenv("PAYMENT_PROCESSOR_URL_DEFAULT")
 	fallbackURL := os.Getenv("PAYMENT_PROCESSOR_URL_FALLBACK")
 
-	if defaultURL == "" {
-		defaultURL = "http://localhost:8001"
-	}
-
-	if fallbackURL == "" {
-		fallbackURL = "http://localhost:8002"
-	}
-
 	for range jobs {
 		resp, err := http.Get(defaultURL+"/payments/service-health")
 

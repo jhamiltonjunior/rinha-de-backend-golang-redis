@@ -6,12 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"time"
 
 	"github.com/jhamiltonjunior/rinha-de-backend/app/database"
 	"github.com/jhamiltonjunior/rinha-de-backend/app/utils"
+	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -24,27 +24,28 @@ var (
 	SegureOChann = make(chan PaymentWorker, 300)
 )
 
-func InitializeWorker(client *mongo.Client) {
+func InitializeWorker(client *mongo.Client, clientRedis *redis.Client) {
 	const numWorkers = 300
 
 	for i := 1; i <= numWorkers; i++ {
 		go func(id int) {
 			for payment := range SegureOChann {
-				start := time.Now()
-				log.Printf("Worker %d started processing payment: %d", id, start.UnixNano())
-				body, ok := ProcessPayment(payment.Body, payment.VouTeDarOContexto)
+				theBestURLEver := clientRedis.Get(payment.VouTeDarOContexto, "the_best_url_ever").Val()
+
+				body, ok := ProcessPayment(payment.Body, payment.VouTeDarOContexto, theBestURLEver)
 				if !ok {
-					sendToPaymentService(payment.Body, os.Getenv("PAYMENT_PROCESSOR_URL_FALLBACK"), payment.VouTeDarOContexto)
+					fallbackURL := os.Getenv("PAYMENT_PROCESSOR_URL_FALLBACK")
+
+					// talvez isso seja um/o problema
+					clientRedis.Set(context.Background(), "the_best_url_ever", fallbackURL, 0)
+
+					sendToPaymentService(payment.Body, fallbackURL, payment.VouTeDarOContexto)
 					database.CreatePaymentHistory(client, body, "fallback")
-					duration := time.Since(start)
-					log.Printf("Worker finished processing payment: %d, duration: %s", id, duration)
+
 					continue
 				}
-				duration := time.Since(start)
-				log.Printf("Worker finished processing payment: %d, duration: %s", id, duration)
 
 				database.CreatePaymentHistory(client, body, "default")
-				// log.Printf("%v\n", body["amount"])
 			}
 		}(i)
 	}
@@ -61,7 +62,7 @@ func newUUID() (string, error) {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:]), nil
 }
 
-func ProcessPayment(paymentBytes []byte, ctx context.Context) (map[string]any, bool) {
+func ProcessPayment(paymentBytes []byte, ctx context.Context, theBestURLEver string) (map[string]any, bool) {
 	var payment map[string]any
 	if err := json.Unmarshal(paymentBytes, &payment); err != nil {
 		return nil, false
@@ -77,9 +78,8 @@ func ProcessPayment(paymentBytes []byte, ctx context.Context) (map[string]any, b
 		fmt.Println("Erro ao serializar o pagamento:", err)
 		return nil, false
 	}
-	reqURL := os.Getenv("PAYMENT_PROCESSOR_URL_DEFAULT")
 
-	return payment, sendToPaymentService(paymentBytes, reqURL, ctx)
+	return payment, sendToPaymentService(paymentBytes, theBestURLEver, ctx)
 }
 
 func sendToPaymentService(paymentBytes []byte, reqURL string, ctx context.Context) bool {

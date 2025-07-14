@@ -12,10 +12,10 @@ func main() {
 	client := database.InitializeMongoDB()
 	clientRedis := database.InitializeRedis()
 
-	go worker.InitializeAndRunPool(clientRedis)
-	select {}
-	return
-	worker.InitializeWorker(client)
+	if os.Getenv("RUN_VERIFY_PAYMENT_SERVICE") == "true" {
+		go worker.InitializeAndRunPool(clientRedis)
+	}
+	worker.InitializeWorker(client, clientRedis)
 
 	appPort := os.Getenv("APP_PORT")
 	if appPort == "" {
@@ -23,5 +23,4 @@ func main() {
 	}
 
 	server.ListenAndServe(appPort)
-
 }
