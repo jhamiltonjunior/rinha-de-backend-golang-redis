@@ -12,7 +12,7 @@ func ListenAndServe(appPort string) {
 
 	r.POST("/payments", handler.Payments)
 	r.GET("/payments-summary", handler.PaymentsSummary)
-	// r.POST("/purge-payments", handler.Payments)
+	r.POST("/purge-payments", handler.PaymentsPurge)
 
 	fmt.Println("Servidor rodando em http://localhost:" + appPort)
 	fasthttp.ListenAndServe(":" + appPort, r.Handler)

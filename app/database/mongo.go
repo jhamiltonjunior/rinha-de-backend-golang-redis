@@ -12,6 +12,13 @@ import (
 
 var MongoClient *mongo.Client
 
+type PaymentHistory struct {
+	CorrelationId string  `bson:"correlationId"`
+	Amount        float64 `bson:"amount"`
+	RequestedAt   string  `bson:"requestedAt"`
+	Type          string  `bson:"type"`
+}
+
 func InitializeMongoDB() *mongo.Client {
 	uri := "mongodb://root:very_hard_password@mongodb:27017/?authSource=admin"
 
@@ -48,7 +55,7 @@ func CreatePaymentHistory(client *mongo.Client, paymentData map[string]interface
 	return client.Database("payment").Collection("payment_history")
 }
 
-func GetPaymentHistory(client *mongo.Client, from, to string) (map[string]any, error) {
+func GetPaymentHistory(client *mongo.Client, from, to string) ([]PaymentHistory, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -65,10 +72,10 @@ func GetPaymentHistory(client *mongo.Client, from, to string) (map[string]any, e
 	}
 	defer cursor.Close(ctx)
 
-	var results []bson.M
+	var results []PaymentHistory
 	if err = cursor.All(ctx, &results); err != nil {
 		return nil, err
 	}
 
-	return map[string]any{"payments": results}, nil
+	return results, nil
 }
