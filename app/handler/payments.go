@@ -66,6 +66,8 @@ func PaymentsSummary(ctx *fasthttp.RequestCtx) {
 		}
 	}
 
+	// ?from=2025-07-13T00:00:00&to=2025-07-13T14:33:48
+
 	paymentsSummary, err := json.Marshal(typeDetails)
 	if err != nil {
 		fmt.Println("Erro ao serializar resumo de pagamentos:", err)
