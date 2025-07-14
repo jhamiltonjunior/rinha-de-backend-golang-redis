@@ -2,58 +2,89 @@ package worker
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"io"
 	"log"
+	"net/http"
+	"os"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
-type Job struct {
-	ID        int
-	CreatedAt time.Time
+type Job struct {}
+
+type PaymentServiceResponse struct {
+	Failing  bool `json:"failing"`
+	MinResponseTime int `json:"minResponseTime"`
 }
 
-func worker(id int, jobs <-chan Job) {
-	for j := range jobs {
-		log.Printf("Worker %d: started job %d from time %v", id, j.ID, j.CreatedAt.Format(time.RFC3339))
-		
-		
-		//worker logic here
+func worker(id int, jobs <-chan Job, clientRedis *redis.Client) {
+	// clientRedis *redis.Client
+	defaultURL := os.Getenv("PAYMENT_PROCESSOR_URL_DEFAULT")
+	fallbackURL := os.Getenv("PAYMENT_PROCESSOR_URL_FALLBACK")
 
+	if defaultURL == "" {
+		defaultURL = "http://localhost:8001"
+	}
 
-		time.Sleep(2 * time.Second)
-		log.Printf("Worker %d: finished job %d", id, j.ID)
+	if fallbackURL == "" {
+		fallbackURL = "http://localhost:8002"
+	}
+
+	for range jobs {
+		resp, err := http.Get(defaultURL+"/payments/service-health")
+
+		if err != nil {
+			log.Printf("Worker %d: Error fetching from default URL: %v", id, err)
+			continue
+		}
+		
+		responseBody, err := io.ReadAll(resp.Body)
+		defer resp.Body.Close()
+		if err != nil {
+			log.Printf("Worker %d: Error reading response body: %v", id, err)
+			continue
+		}
+
+		var paymentServiceResponse PaymentServiceResponse
+		if err := json.Unmarshal(responseBody, &paymentServiceResponse); err != nil {
+			log.Printf("Worker %d: Error unmarshalling response: %v", id, err)
+			continue
+		}
+
+		fmt.Printf("%+v\n", paymentServiceResponse)
+		fmt.Printf("%+v\n", paymentServiceResponse.Failing)
+		fmt.Printf("%+v\n", paymentServiceResponse.MinResponseTime)
+
+		if paymentServiceResponse.Failing {
+			clientRedis.Set(context.Background(), "the_best_url_ever", defaultURL, 0)
+			continue
+		}
+
+		clientRedis.Set(context.Background(), "the_best_url_ever", fallbackURL, 0)
 	}
 }
 
 func dispatcher(_ context.Context, jobs chan<- Job) {
-	log.Println("Dispatcher started.")
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
-	var jobCounter int
-
-	for t := range ticker.C {
-		log.Printf("Dispatcher tick at %v. Creating new job.", t.Format(time.RFC3339))
-		jobCounter++
-		jobs <- Job{ID: jobCounter, CreatedAt: t}
+	for range ticker.C {
+		jobs <- Job{}
 	}
 }
 
-func InitializeAndRunPool() {
-
+func InitializeAndRunPool(clientRedis *redis.Client) {
 	const numWorkers = 5
 	const jobChannelBufferSize = 10
 
 	jobs := make(chan Job, jobChannelBufferSize)
 
 	for w := 1; w <= numWorkers; w++ {
-		go worker(w, jobs)
+		go worker(w, jobs, clientRedis)
 	}
-	log.Printf("Started %d background workers.", numWorkers)
 
 	go dispatcher(context.Background(), jobs)
-}
-
-func main() {
-
-	go InitializeAndRunPool()
 }
