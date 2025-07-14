@@ -1,23 +1,26 @@
 package main
 
 import (
-	"os"
+	// "os"
 
-	"github.com/jhamiltonjunior/rinha-de-backend/app/database"
-	"github.com/jhamiltonjunior/rinha-de-backend/app/server"
+	// "github.com/jhamiltonjunior/rinha-de-backend/app/database"
+	// "github.com/jhamiltonjunior/rinha-de-backend/app/server"
 	"github.com/jhamiltonjunior/rinha-de-backend/app/worker"
 	_ "github.com/lib/pq"
 )
 
 func main() {
-	client := database.InitializeMongoDB()
+	// client := database.InitializeMongoDB()
 
-	worker.InitializeWorker(client)
+	// worker.InitializeWorker(client)
 
-	appPort := os.Getenv("APP_PORT")
-	if appPort == "" {
-		appPort = "3000"
-	}
+	// appPort := os.Getenv("APP_PORT")
+	// if appPort == "" {
+	// 	appPort = "3000"
+	// }
 
-	server.ListenAndServe(appPort)
+	// server.ListenAndServe(appPort)
+
+	worker.InitializeAndRunPool()
+	select {}
 }
