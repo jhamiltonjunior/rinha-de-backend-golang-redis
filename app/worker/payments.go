@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -14,6 +15,7 @@ import (
 
 type PaymentWorker struct {
 	Body []byte
+	VouTeDarOContexto context.Context
 }
 
 var (
@@ -26,9 +28,9 @@ func InitializeWorker(client *mongo.Client) {
 	for i := 1; i <= numWorkers; i++ {
 		go func(id int) {
 			for payment := range SegureOChann {
-				body, ok := ProcessPayment(payment.Body)
+				body, ok := ProcessPayment(payment.Body, payment.VouTeDarOContexto)
 				if !ok {
-					sendToPaymentService(payment.Body, os.Getenv("PAYMENT_PROCESSOR_URL_FALLBACK"))
+					sendToPaymentService(payment.Body, os.Getenv("PAYMENT_PROCESSOR_URL_FALLBACK"), payment.VouTeDarOContexto)
 					database.CreatePaymentHistory(client, body, "fallback")
 					continue
 				}
@@ -40,7 +42,7 @@ func InitializeWorker(client *mongo.Client) {
 	}
 }
 
-func ProcessPayment(paymentBytes []byte) (map[string]any, bool) {
+func ProcessPayment(paymentBytes []byte, ctx context.Context) (map[string]any, bool) {
 	var payment map[string]any
 	if err := json.Unmarshal(paymentBytes, &payment); err != nil {
 		return nil, false
@@ -56,11 +58,11 @@ func ProcessPayment(paymentBytes []byte) (map[string]any, bool) {
 	}
 	reqURL := os.Getenv("PAYMENT_PROCESSOR_URL_DEFAULT")
 
-	return payment, sendToPaymentService(paymentBytes, reqURL)
+	return payment, sendToPaymentService(paymentBytes, reqURL, ctx)
 }
 
-func sendToPaymentService(paymentBytes []byte, reqURL string) bool {
-	_, status := utils.Request("POST", paymentBytes, reqURL+"/payments")
+func sendToPaymentService(paymentBytes []byte, reqURL string, ctx context.Context) bool {
+	_, status := utils.Request("POST", paymentBytes, reqURL+"/payments", ctx)
 	fmt.Printf("status: %d\n", status)
 	return status == 200 || status == 201
 }

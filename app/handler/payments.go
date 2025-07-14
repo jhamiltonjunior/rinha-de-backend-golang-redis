@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/jhamiltonjunior/rinha-de-backend/app/database"
 	"github.com/jhamiltonjunior/rinha-de-backend/app/worker"
@@ -23,8 +25,12 @@ func Payments(ctx *fasthttp.RequestCtx) {
 	bodyCopy := make([]byte, len(ctx.PostBody()))
 	copy(bodyCopy, ctx.PostBody())
 
+	cxt, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
 	paymentWorker := worker.PaymentWorker{
 		Body: bodyCopy,
+		VouTeDarOContexto: cxt,
 	}
 
 	select {
