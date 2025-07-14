@@ -17,23 +17,23 @@ type PaymentWorker struct {
 }
 
 var (
-	SegureOChann = make(chan PaymentWorker, 100)
+	SegureOChann = make(chan PaymentWorker, 150)
 )
 
 func InitializeWorker(client *mongo.Client) {
-	const numWorkers = 100
+	const numWorkers = 150
 
 	for i := 1; i <= numWorkers; i++ {
 		go func(id int) {
 			for payment := range SegureOChann {
 				body, ok := ProcessPayment(payment.Body)
 				if !ok {
-					log.Printf("Erro ao processar pagamento: %v\n", body)
+					sendToPaymentService(payment.Body, os.Getenv("PAYMENT_PROCESSOR_URL_FALLBACK"))
+					database.CreatePaymentHistory(client, body, "fallback")
 					continue
 				}
 
 				database.CreatePaymentHistory(client, body, "default")
-
 				log.Printf("%v\n", body["amount"])
 			}
 		}(i)
@@ -54,12 +54,12 @@ func ProcessPayment(paymentBytes []byte) (map[string]any, bool) {
 		fmt.Println("Erro ao serializar o pagamento:", err)
 		return nil, false
 	}
+	reqURL := os.Getenv("PAYMENT_PROCESSOR_URL_DEFAULT")
 
-	return payment, sendToPaymentService(paymentBytes)
+	return payment, sendToPaymentService(paymentBytes, reqURL)
 }
 
-func sendToPaymentService(paymentBytes []byte) bool {
-	reqURL := os.Getenv("PAYMENT_PROCESSOR_URL_DEFAULT")
+func sendToPaymentService(paymentBytes []byte, reqURL string) bool {
 	_, status := utils.Request("POST", paymentBytes, reqURL+"/payments")
 	fmt.Printf("status: %d\n", status)
 	return status == 200 || status == 201

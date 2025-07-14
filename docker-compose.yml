@@ -71,6 +71,32 @@ services:
     #       cpus: "0.25"
     #       memory: "55MB"
 
+  rinha-api-3:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: rinha-api-3
+    environment:
+      - APP_PORT=3000
+      - REDIS_ADDR=redis:6379
+      - POSTGRES_URL=postgres://user:password-very-har@postgres:5432/rinha_de_backend?sslmode=disable
+      - NATS_URL=nats://nats:4222
+      - PAYMENT_PROCESSOR_URL_DEFAULT=http://payment-processor-default:8080
+      - PAYMENT_PROCESSOR_URL_FALLBACK=http://payment-processor-fallback:8080
+    depends_on:
+      - redis
+      - mongodb
+    networks:
+      - app-network
+      - payment-processor
+    volumes:
+      - ./:/app
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: "0.25"
+    #       memory: "55MB"
+
   redis:
     image: redis:7.2.4-alpine
     container_name: redis_cache

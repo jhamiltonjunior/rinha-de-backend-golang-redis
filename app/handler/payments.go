@@ -15,8 +15,8 @@ type Details struct {
 }
 
 type TypeDetails struct {
-	Default   Details `json:"default"`
-	Fallback  Details `json:"fallback"`
+	Default  Details `json:"default"`
+	Fallback Details `json:"fallback"`
 }
 
 func Payments(ctx *fasthttp.RequestCtx) {
