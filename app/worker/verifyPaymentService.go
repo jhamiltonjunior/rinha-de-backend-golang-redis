@@ -28,6 +28,9 @@ func worker(id int, jobs <-chan Job, clientRedis *redis.Client) {
 	for range jobs {
 		resp, err := http.Get(defaultURL+"/payments/service-health")
 
+		the_best_url_ever := clientRedis.Get(context.Background(), "the_best_url_ever").Val()
+		fmt.Printf("Using URL: %s\n", the_best_url_ever)
+
 		if err != nil {
 			log.Printf("Worker %d: Error fetching from default URL: %v", id, err)
 			continue
@@ -50,7 +53,7 @@ func worker(id int, jobs <-chan Job, clientRedis *redis.Client) {
 		fmt.Printf("%+v\n", paymentServiceResponse.Failing)
 		fmt.Printf("%+v\n", paymentServiceResponse.MinResponseTime)
 
-		if paymentServiceResponse.Failing {
+		if !paymentServiceResponse.Failing {
 			clientRedis.Set(context.Background(), "the_best_url_ever", defaultURL, 0)
 			continue
 		}

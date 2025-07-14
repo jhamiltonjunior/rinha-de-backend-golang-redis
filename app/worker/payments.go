@@ -30,22 +30,28 @@ func InitializeWorker(client *mongo.Client, clientRedis *redis.Client) {
 	for i := 1; i <= numWorkers; i++ {
 		go func(id int) {
 			for payment := range SegureOChann {
-				theBestURLEver := clientRedis.Get(payment.VouTeDarOContexto, "the_best_url_ever").Val()
+				// sera que devo usar o Result aqui? seria erro no ctx? parece que foi um problema de logica no verifyPaymentService.go
+				// usei o Val(), mas a url estava vazia, ainda não usei o Result()
+				// verificar porque a url estava vazia
+				theBestURLEver, _ := clientRedis.Get(context.Background(), "the_best_url_ever").Result()
+				fmt.Printf("Using URL: %s\n", theBestURLEver)
 
 				body, ok := ProcessPayment(payment.Body, payment.VouTeDarOContexto, theBestURLEver)
-				if !ok {
-					fallbackURL := os.Getenv("PAYMENT_PROCESSOR_URL_FALLBACK")
+				if ok {
+					database.CreatePaymentHistory(client, body, "default")
+					continue
+				}
+				fallbackURL := os.Getenv("PAYMENT_PROCESSOR_URL_FALLBACK")
 
-					// talvez isso seja um/o problema
-					clientRedis.Set(context.Background(), "the_best_url_ever", fallbackURL, 0)
-
-					sendToPaymentService(payment.Body, fallbackURL, payment.VouTeDarOContexto)
+				// talvez isso seja um/o problema, talvaze isso não seja o problema, acho que a url está vazia
+				clientRedis.Set(context.Background(), "the_best_url_ever", fallbackURL, 0)
+				body, ok = ProcessPayment(payment.Body, payment.VouTeDarOContexto, fallbackURL)
+				// ok = sendToPaymentService(payment.Body, fallbackURL, payment.VouTeDarOContexto)
+				if ok {
 					database.CreatePaymentHistory(client, body, "fallback")
-
 					continue
 				}
 
-				database.CreatePaymentHistory(client, body, "default")
 			}
 		}(i)
 	}
