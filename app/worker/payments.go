@@ -16,16 +16,16 @@ import (
 )
 
 type PaymentWorker struct {
-	Body []byte
+	Body              []byte
 	VouTeDarOContexto context.Context
 }
 
 var (
-	SegureOChann = make(chan PaymentWorker, 300)
+	SegureOChann = make(chan PaymentWorker, 100)
 )
 
 func InitializeWorker(client *mongo.Client, clientRedis *redis.Client) {
-	const numWorkers = 300
+	const numWorkers = 100
 
 	for i := 1; i <= numWorkers; i++ {
 		go func(id int) {
@@ -34,24 +34,32 @@ func InitializeWorker(client *mongo.Client, clientRedis *redis.Client) {
 				// usei o Val(), mas a url estava vazia, ainda não usei o Result()
 				// verificar porque a url estava vazia
 				theBestURLEver, _ := clientRedis.Get(context.Background(), "the_best_url_ever").Result()
-				fmt.Printf("Using URL: %s\n", theBestURLEver)
+				// fmt.Printf("Using URL: %s\n", theBestURLEver)
 
 				body, ok := ProcessPayment(payment.Body, payment.VouTeDarOContexto, theBestURLEver)
 				if ok {
-					database.CreatePaymentHistory(client, body, "default")
+					typeOfProcessor, _ := clientRedis.Get(context.Background(), "type_of_processor").Result()
+					// fmt.Printf("Using type: %s\n", typeOfProcessor)
+					database.CreatePaymentHistory(client, body, typeOfProcessor)
 					continue
 				}
 				fallbackURL := os.Getenv("PAYMENT_PROCESSOR_URL_FALLBACK")
+				defaultURL := os.Getenv("PAYMENT_PROCESSOR_URL_DEFAULT")
+
+				url := defaultURL
+				if theBestURLEver == defaultURL {
+					url = fallbackURL
+				}
+
+				clientRedis.Set(context.Background(), "the_best_url_ever", url, 0)
+				// fmt.Printf("Using type: %s\n", "fallback")
 
 				// talvez isso seja um/o problema, talvaze isso não seja o problema, acho que a url está vazia
-				clientRedis.Set(context.Background(), "the_best_url_ever", fallbackURL, 0)
-				body, ok = ProcessPayment(payment.Body, payment.VouTeDarOContexto, fallbackURL)
-				// ok = sendToPaymentService(payment.Body, fallbackURL, payment.VouTeDarOContexto)
+				body, ok = ProcessPayment(payment.Body, payment.VouTeDarOContexto, url)
 				if ok {
 					database.CreatePaymentHistory(client, body, "fallback")
 					continue
 				}
-
 			}
 		}(i)
 	}
@@ -77,7 +85,7 @@ func ProcessPayment(paymentBytes []byte, ctx context.Context, theBestURLEver str
 	// payment["correlationId"], _ = newUUID()
 
 	now := time.Now().UTC()
-	payment["requestedAt"] = now.Format(time.RFC3339Nano)
+	payment["requestedAt"] = now.Format(time.RFC3339)
 
 	paymentBytes, err := json.Marshal(payment)
 	if err != nil {

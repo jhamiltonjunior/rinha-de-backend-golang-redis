@@ -3,7 +3,6 @@ package worker
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -13,29 +12,25 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-type Job struct {}
+type Job struct{}
 
 type PaymentServiceResponse struct {
-	Failing  bool `json:"failing"`
-	MinResponseTime int `json:"minResponseTime"`
+	Failing         bool `json:"failing"`
+	MinResponseTime int  `json:"minResponseTime"`
 }
 
 func worker(id int, jobs <-chan Job, clientRedis *redis.Client) {
-	// clientRedis *redis.Client
 	defaultURL := os.Getenv("PAYMENT_PROCESSOR_URL_DEFAULT")
 	fallbackURL := os.Getenv("PAYMENT_PROCESSOR_URL_FALLBACK")
 
 	for range jobs {
-		resp, err := http.Get(defaultURL+"/payments/service-health")
-
-		the_best_url_ever := clientRedis.Get(context.Background(), "the_best_url_ever").Val()
-		fmt.Printf("Using URL: %s\n", the_best_url_ever)
+		resp, err := http.Get(defaultURL + "/payments/service-health")
 
 		if err != nil {
 			log.Printf("Worker %d: Error fetching from default URL: %v", id, err)
 			continue
 		}
-		
+
 		responseBody, err := io.ReadAll(resp.Body)
 		defer resp.Body.Close()
 		if err != nil {
@@ -49,16 +44,14 @@ func worker(id int, jobs <-chan Job, clientRedis *redis.Client) {
 			continue
 		}
 
-		fmt.Printf("%+v\n", paymentServiceResponse)
-		fmt.Printf("%+v\n", paymentServiceResponse.Failing)
-		fmt.Printf("%+v\n", paymentServiceResponse.MinResponseTime)
-
 		if !paymentServiceResponse.Failing {
 			clientRedis.Set(context.Background(), "the_best_url_ever", defaultURL, 0)
+			clientRedis.Set(context.Background(), "type_of_processor", "default", 0)
 			continue
 		}
 
 		clientRedis.Set(context.Background(), "the_best_url_ever", fallbackURL, 0)
+		clientRedis.Set(context.Background(), "type_of_processor", "fallback", 0)
 	}
 }
 
