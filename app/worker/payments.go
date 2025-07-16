@@ -2,10 +2,8 @@ package worker
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"time"
 
@@ -18,65 +16,72 @@ import (
 type PaymentWorker struct {
 	Body              []byte
 	VouTeDarOContexto context.Context
+	RetryCount        int
 }
 
 var (
-	SegureOChann = make(chan PaymentWorker, 300)
+	SegureOChann  = make(chan PaymentWorker, 1000)
+	SegureOChann2 = make(chan PaymentWorker, 3000)
 )
 
 func InitializeWorker(client *mongo.Client, clientRedis *redis.Client) {
-	const numWorkers = 300
+	defaultURL := os.Getenv("PAYMENT_PROCESSOR_URL_DEFAULT")
+	fallbackURL := os.Getenv("PAYMENT_PROCESSOR_URL_FALLBACK")
+	const numWorkers = 50
 
 	for i := 1; i <= numWorkers; i++ {
-		go func(id int) {
-			for payment := range SegureOChann {
-				// sera que devo usar o Result aqui? seria erro no ctx? parece que foi um problema de logica no verifyPaymentService.go
-				// usei o Val(), mas a url estava vazia, ainda não usei o Result()
-				// verificar porque a url estava vazia
-				// theBestURLEver, _ := clientRedis.Get(context.Background(), "the_best_url_ever").Result()
-				defaultURL := os.Getenv("PAYMENT_PROCESSOR_URL_DEFAULT")
-				// fmt.Printf("Using URL: %s\n", theBestURLEver)
+		go workerLoop(client, defaultURL, fallbackURL)
+	}
 
-				body, ok := ProcessPayment(payment.Body, payment.VouTeDarOContexto, defaultURL)
-				if ok {
-					// typeOfProcessor, _ := clientRedis.Get(context.Background(), "type_of_processor").Result()
-					// fmt.Printf("Using type: %s\n", typeOfProcessor)
-					database.CreatePaymentHistory(client, body, "default")
-					continue
-				}
-				fallbackURL := os.Getenv("PAYMENT_PROCESSOR_URL_FALLBACK")
-
-				// url := defaultURL
-				// typeOfProcessor := "default"
-				// if theBestURLEver == defaultURL {
-				// 	url = fallbackURL
-				// 	typeOfProcessor = "fallback"
-				// }
-
-				// clientRedis.Set(context.Background(), "the_best_url_ever", url, 0)
-				// clientRedis.Set(context.Background(), "type_of_processor", typeOfProcessor, 0)
-				// fmt.Printf("Using type: %s\n", "fallback")
-
-				// talvez isso seja um/o problema, talvaze isso não seja o problema, acho que a url está vazia
-				body, ok = ProcessPayment(payment.Body, payment.VouTeDarOContexto, fallbackURL)
-				if ok {
-					database.CreatePaymentHistory(client, body, "fallback")
-					continue
-				}
-			}
-		}(i)
+	for i := 1; i <= numWorkers; i++ {
+		go retryworkLoop(defaultURL, fallbackURL)
 	}
 }
 
-func newUUID() (string, error) {
-	uuid := make([]byte, 16)
-	n, err := io.ReadFull(rand.Reader, uuid)
-	if n != len(uuid) || err != nil {
-		return "", err
+func workerFunc(client *mongo.Client, defaultURL, fallbackURL string, payment PaymentWorker) bool {
+	body, ok := ProcessPayment(payment.Body, payment.VouTeDarOContexto, defaultURL)
+	if ok {
+		database.CreatePaymentHistory(client, body, "default")
+		return true
 	}
-	uuid[8] = uuid[8]&^0xc0 | 0x80
-	uuid[6] = uuid[6]&^0xf0 | 0x40
-	return fmt.Sprintf("%x-%x-%x-%x-%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:]), nil
+
+	body, ok = ProcessPayment(payment.Body, payment.VouTeDarOContexto, fallbackURL)
+	if ok {
+		database.CreatePaymentHistory(client, body, "fallback")
+		return true
+	}
+
+	return false
+}
+
+func workerLoop(client *mongo.Client, defaultURL, fallbackURL string) {
+	for payment := range SegureOChann {
+		if !workerFunc(client, defaultURL, fallbackURL, payment) {
+			SegureOChann2 <- PaymentWorker{
+				Body:              payment.Body,
+				VouTeDarOContexto: context.TODO(),
+			}
+		}
+	}
+}
+
+func retryworkLoop(defaultURL, fallbackURL string) {
+	for payment := range SegureOChann2 {
+		if payment.RetryCount >= 10 {
+			continue
+		}
+
+		func() {
+			cxt, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+			payment.VouTeDarOContexto = cxt
+
+			if !workerFunc(database.MongoClient, defaultURL, fallbackURL, payment) {
+				payment.RetryCount++
+				SegureOChann2 <- payment
+			}
+		}()
+	}
 }
 
 func ProcessPayment(paymentBytes []byte, ctx context.Context, theBestURLEver string) (map[string]any, bool) {
