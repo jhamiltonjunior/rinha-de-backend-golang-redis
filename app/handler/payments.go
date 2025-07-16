@@ -29,7 +29,7 @@ func Payments(ctx *fasthttp.RequestCtx) {
 	defer cancel()
 
 	paymentWorker := worker.PaymentWorker{
-		Body: bodyCopy,
+		Body:              bodyCopy,
 		VouTeDarOContexto: cxt,
 	}
 
@@ -80,6 +80,9 @@ func PaymentsSummary(ctx *fasthttp.RequestCtx) {
 		sendJSONResponse(ctx, fasthttp.StatusInternalServerError)
 		return
 	}
+
+	fmt.Printf("?from=%s&to=%s\n", string(from), string(to))
+	fmt.Println("Payments Summary:", string(paymentsSummary))
 
 	fmt.Fprintf(ctx, "%s", string(paymentsSummary))
 	sendJSONResponse(ctx, fasthttp.StatusOK)

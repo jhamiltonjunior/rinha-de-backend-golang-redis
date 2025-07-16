@@ -21,11 +21,11 @@ type PaymentWorker struct {
 }
 
 var (
-	SegureOChann = make(chan PaymentWorker, 100)
+	SegureOChann = make(chan PaymentWorker, 300)
 )
 
 func InitializeWorker(client *mongo.Client, clientRedis *redis.Client) {
-	const numWorkers = 100
+	const numWorkers = 300
 
 	for i := 1; i <= numWorkers; i++ {
 		go func(id int) {
@@ -33,29 +33,32 @@ func InitializeWorker(client *mongo.Client, clientRedis *redis.Client) {
 				// sera que devo usar o Result aqui? seria erro no ctx? parece que foi um problema de logica no verifyPaymentService.go
 				// usei o Val(), mas a url estava vazia, ainda não usei o Result()
 				// verificar porque a url estava vazia
-				theBestURLEver, _ := clientRedis.Get(context.Background(), "the_best_url_ever").Result()
+				// theBestURLEver, _ := clientRedis.Get(context.Background(), "the_best_url_ever").Result()
+				defaultURL := os.Getenv("PAYMENT_PROCESSOR_URL_DEFAULT")
 				// fmt.Printf("Using URL: %s\n", theBestURLEver)
 
-				body, ok := ProcessPayment(payment.Body, payment.VouTeDarOContexto, theBestURLEver)
+				body, ok := ProcessPayment(payment.Body, payment.VouTeDarOContexto, defaultURL)
 				if ok {
-					typeOfProcessor, _ := clientRedis.Get(context.Background(), "type_of_processor").Result()
+					// typeOfProcessor, _ := clientRedis.Get(context.Background(), "type_of_processor").Result()
 					// fmt.Printf("Using type: %s\n", typeOfProcessor)
-					database.CreatePaymentHistory(client, body, typeOfProcessor)
+					database.CreatePaymentHistory(client, body, "default")
 					continue
 				}
 				fallbackURL := os.Getenv("PAYMENT_PROCESSOR_URL_FALLBACK")
-				defaultURL := os.Getenv("PAYMENT_PROCESSOR_URL_DEFAULT")
 
-				url := defaultURL
-				if theBestURLEver == defaultURL {
-					url = fallbackURL
-				}
+				// url := defaultURL
+				// typeOfProcessor := "default"
+				// if theBestURLEver == defaultURL {
+				// 	url = fallbackURL
+				// 	typeOfProcessor = "fallback"
+				// }
 
-				clientRedis.Set(context.Background(), "the_best_url_ever", url, 0)
+				// clientRedis.Set(context.Background(), "the_best_url_ever", url, 0)
+				// clientRedis.Set(context.Background(), "type_of_processor", typeOfProcessor, 0)
 				// fmt.Printf("Using type: %s\n", "fallback")
 
 				// talvez isso seja um/o problema, talvaze isso não seja o problema, acho que a url está vazia
-				body, ok = ProcessPayment(payment.Body, payment.VouTeDarOContexto, url)
+				body, ok = ProcessPayment(payment.Body, payment.VouTeDarOContexto, fallbackURL)
 				if ok {
 					database.CreatePaymentHistory(client, body, "fallback")
 					continue
@@ -85,7 +88,8 @@ func ProcessPayment(paymentBytes []byte, ctx context.Context, theBestURLEver str
 	// payment["correlationId"], _ = newUUID()
 
 	now := time.Now().UTC()
-	payment["requestedAt"] = now.Format(time.RFC3339)
+	isoString := "2006-01-02T15:04:05.000Z"
+	payment["requestedAt"] = now.Format(isoString)
 
 	paymentBytes, err := json.Marshal(payment)
 	if err != nil {
@@ -98,6 +102,6 @@ func ProcessPayment(paymentBytes []byte, ctx context.Context, theBestURLEver str
 
 func sendToPaymentService(paymentBytes []byte, reqURL string, ctx context.Context) bool {
 	_, status := utils.Request("POST", paymentBytes, reqURL+"/payments", ctx)
-	fmt.Printf("status: %d\n", status)
+	// fmt.Printf("status: %d\n", status)
 	return status == 200 || status == 201
 }
