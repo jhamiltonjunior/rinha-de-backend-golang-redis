@@ -1,25 +1,17 @@
-FROM golang:1.24-alpine AS builder
+# syntax=docker/dockerfile:1
+
+FROM golang:1.24
 
 WORKDIR /app
 
 COPY go.mod go.sum ./
-
 RUN go mod download
 
-COPY . .
+COPY . ./
 
-# Build the Go application
-# -o /app/main specifies the output file name and location.
-# CGO_ENABLED=0 disables Cgo to produce a statically linked binary.
-# -ldflags "-s -w" strips debugging information, reducing the binary size.
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags "-s -w" -o /app/main .
-
-FROM alpine:3.19
-
-WORKDIR /app
-
-COPY --from=builder /app/main .
+RUN CGO_ENABLED=0 GOOS=linux go build -o /main
 
 EXPOSE 3000
 
-CMD ["/app/main"]
+# Run
+CMD ["/main"]

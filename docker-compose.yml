@@ -23,7 +23,7 @@ services:
   rinha-api-1:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     container_name: rinha-api-1
     environment:
       - RUN_VERIFY_PAYMENT_SERVICE=true
@@ -50,7 +50,7 @@ services:
   rinha-api-2:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     container_name: rinha-api-2
     environment:
       - APP_PORT=3000
@@ -76,7 +76,7 @@ services:
   rinha-api-3:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     container_name: rinha-api-3
     environment:
       - APP_PORT=3000
