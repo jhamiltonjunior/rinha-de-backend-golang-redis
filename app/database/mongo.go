@@ -36,7 +36,7 @@ func InitializeMongoDB() *mongo.Client {
 	return client
 }
 
-func CreatePaymentHistory(client *mongo.Client, paymentData map[string]interface{}, typeService string) *mongo.Collection {
+func CreatePaymentHistory(client *mongo.Client, paymentData map[string]interface{}, typeService string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -49,10 +49,7 @@ func CreatePaymentHistory(client *mongo.Client, paymentData map[string]interface
 
 	if err != nil {
 		log.Printf("Erro ao inserir pagamento: %v", err)
-		return nil
 	}
-
-	return client.Database("payment").Collection("payment_history")
 }
 
 func GetPaymentHistory(client *mongo.Client, from, to string) ([]PaymentHistory, error) {

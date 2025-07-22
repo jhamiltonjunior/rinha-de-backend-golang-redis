@@ -34,18 +34,18 @@ services:
       - PAYMENT_PROCESSOR_URL_DEFAULT=http://payment-processor-default:8080
       - PAYMENT_PROCESSOR_URL_FALLBACK=http://payment-processor-fallback:8080
     depends_on:
-      - redis
+      # - redis
       - mongodb
     networks:
       - app-network
       - payment-processor
     volumes:
       - ./:/app
-    # deploy:
-    #   resources:
-    #     limits:
-    #       cpus: "0.25"
-    #       memory: "55MB"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: "30MB"
 
   rinha-api-2:
     build:
@@ -60,18 +60,18 @@ services:
       - PAYMENT_PROCESSOR_URL_DEFAULT=http://payment-processor-default:8080
       - PAYMENT_PROCESSOR_URL_FALLBACK=http://payment-processor-fallback:8080
     depends_on:
-      - redis
+      # - redis
       - mongodb
     networks:
       - app-network
       - payment-processor
     volumes:
       - ./:/app
-    # deploy:
-    #   resources:
-    #     limits:
-    #       cpus: "0.25"
-    #       memory: "55MB"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: "30MB"
 
   rinha-api-3:
     build:
@@ -86,24 +86,24 @@ services:
       - PAYMENT_PROCESSOR_URL_DEFAULT=http://payment-processor-default:8080
       - PAYMENT_PROCESSOR_URL_FALLBACK=http://payment-processor-fallback:8080
     depends_on:
-      - redis
+      # - redis
       - mongodb
     networks:
       - app-network
       - payment-processor
     volumes:
       - ./:/app
-    # deploy:
-    #   resources:
-    #     limits:
-    #       cpus: "0.25"
-    #       memory: "55MB"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: "30MB"
 
-  redis:
-    image: redis:7.2.4-alpine
-    container_name: redis_cache
-    networks:
-      - app-network
+  # redis:
+  #   image: redis:7.2.4-alpine
+  #   container_name: redis_cache
+  #   networks:
+  #     - app-network
 
   mongodb:
     image: mongo:latest
@@ -118,6 +118,11 @@ services:
       - mongo_data:/data/db
     networks:
       - app-network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.55"
+          memory: "245MB"
 
   mongo-express:
     image: mongo-express:latest
@@ -139,5 +144,4 @@ networks:
     external: true
 
 volumes:
-  postgres_data:
   mongo_data:

@@ -20,14 +20,14 @@ type PaymentWorker struct {
 }
 
 var (
-	SegureOChann  = make(chan PaymentWorker, 1000)
+	SegureOChann  = make(chan PaymentWorker, 3000)
 	SegureOChann2 = make(chan PaymentWorker, 3000)
 )
 
 func InitializeWorker(client *mongo.Client, clientRedis *redis.Client) {
 	defaultURL := os.Getenv("PAYMENT_PROCESSOR_URL_DEFAULT")
 	fallbackURL := os.Getenv("PAYMENT_PROCESSOR_URL_FALLBACK")
-	const numWorkers = 50
+	const numWorkers = 20
 
 	for i := 1; i <= numWorkers; i++ {
 		go workerLoop(client, defaultURL, fallbackURL)

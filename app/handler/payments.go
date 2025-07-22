@@ -81,8 +81,8 @@ func PaymentsSummary(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	fmt.Printf("?from=%s&to=%s\n", string(from), string(to))
-	fmt.Println("Payments Summary:", string(paymentsSummary))
+	// fmt.Printf("?from=%s&to=%s\n", string(from), string(to))
+	// fmt.Println("Payments Summary:", string(paymentsSummary))
 
 	fmt.Fprintf(ctx, "%s", string(paymentsSummary))
 	sendJSONResponse(ctx, fasthttp.StatusOK)
