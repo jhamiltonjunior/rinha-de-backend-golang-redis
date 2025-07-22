@@ -21,9 +21,7 @@ services:
           memory: "15MB"
 
   rinha-api-1:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: jhamiltonjunior/rinha-de-backend-go-mongo:latest
     container_name: rinha-api-1
     environment:
       - RUN_VERIFY_PAYMENT_SERVICE=true
@@ -48,9 +46,7 @@ services:
           memory: "30MB"
 
   rinha-api-2:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: jhamiltonjunior/rinha-de-backend-go-mongo:latest
     container_name: rinha-api-2
     environment:
       - APP_PORT=3000
@@ -74,9 +70,7 @@ services:
           memory: "30MB"
 
   rinha-api-3:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: jhamiltonjunior/rinha-de-backend-go-mongo:latest
     container_name: rinha-api-3
     environment:
       - APP_PORT=3000
