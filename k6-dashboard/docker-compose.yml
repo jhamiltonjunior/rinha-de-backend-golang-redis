@@ -25,11 +25,11 @@ services:
       # - K6_WEB_DASHBOARD_EXPORT='report.html'
     command: run /scripts/rinha.js --out influxdb=http://influxdb:8086/k6
     networks:
-      - rinha-de-backend_app-network
+      - rinha-de-backend-redis_app-network
       - payment-processor
 
 networks:
-  rinha-de-backend_app-network:
+  rinha-de-backend-redis_app-network:
     external: true
   payment-processor:
     external: true
