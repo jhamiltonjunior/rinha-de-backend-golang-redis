@@ -10,13 +10,13 @@ import (
 	"github.com/jhamiltonjunior/rinha-de-backend/app/database"
 	"github.com/jhamiltonjunior/rinha-de-backend/app/utils"
 	"github.com/redis/go-redis/v9"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type PaymentWorker struct {
 	Body              []byte
 	VouTeDarOContexto context.Context
 	RetryCount        int
+	RequestedAt      string
 }
 
 var (
@@ -24,7 +24,7 @@ var (
 	SegureOChann2 = make(chan PaymentWorker, 3000)
 )
 
-func InitializeWorker(client *mongo.Client, clientRedis *redis.Client) {
+func InitializeWorker(client *redis.Client) {
 	defaultURL := os.Getenv("PAYMENT_PROCESSOR_URL_DEFAULT")
 	fallbackURL := os.Getenv("PAYMENT_PROCESSOR_URL_FALLBACK")
 	const numWorkers = 20
@@ -34,27 +34,31 @@ func InitializeWorker(client *mongo.Client, clientRedis *redis.Client) {
 	}
 
 	for i := 1; i <= numWorkers; i++ {
-		go retryworkLoop(defaultURL, fallbackURL)
+		go retryworkLoop(client, defaultURL, fallbackURL)
 	}
 }
 
-func workerFunc(client *mongo.Client, defaultURL, fallbackURL string, payment PaymentWorker) bool {
-	body, ok := ProcessPayment(payment.Body, payment.VouTeDarOContexto, defaultURL)
+func workerFunc(client *redis.Client, defaultURL, fallbackURL string, payment PaymentWorker) bool {
+	body, ok := ProcessPayment(payment.Body, payment.VouTeDarOContexto, defaultURL, payment.RequestedAt)
 	if ok {
-		database.CreatePaymentHistory(client, body, "default")
+		database.CreatePaymentHistoryInMemory(client, body, "default")
 		return true
 	}
 
-	body, ok = ProcessPayment(payment.Body, payment.VouTeDarOContexto, fallbackURL)
+	// if payment.RetryCount <= 10 {
+	// 	return false
+	// }
+
+	body, ok = ProcessPayment(payment.Body, payment.VouTeDarOContexto, fallbackURL, payment.RequestedAt)
 	if ok {
-		database.CreatePaymentHistory(client, body, "fallback")
+		database.CreatePaymentHistoryInMemory(client, body, "fallback")
 		return true
 	}
 
 	return false
 }
 
-func workerLoop(client *mongo.Client, defaultURL, fallbackURL string) {
+func workerLoop(client *redis.Client, defaultURL, fallbackURL string) {
 	for payment := range SegureOChann {
 		if !workerFunc(client, defaultURL, fallbackURL, payment) {
 			SegureOChann2 <- PaymentWorker{
@@ -65,18 +69,18 @@ func workerLoop(client *mongo.Client, defaultURL, fallbackURL string) {
 	}
 }
 
-func retryworkLoop(defaultURL, fallbackURL string) {
+func retryworkLoop(client *redis.Client, defaultURL, fallbackURL string) {
 	for payment := range SegureOChann2 {
-		if payment.RetryCount >= 10 {
-			continue
-		}
+		// if payment.RetryCount >= 20 {
+		// 	continue
+		// }
 
 		func() {
 			cxt, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 			payment.VouTeDarOContexto = cxt
 
-			if !workerFunc(database.MongoClient, defaultURL, fallbackURL, payment) {
+			if !workerFunc(client, defaultURL, fallbackURL, payment) {
 				payment.RetryCount++
 				SegureOChann2 <- payment
 			}
@@ -84,17 +88,13 @@ func retryworkLoop(defaultURL, fallbackURL string) {
 	}
 }
 
-func ProcessPayment(paymentBytes []byte, ctx context.Context, theBestURLEver string) (map[string]any, bool) {
+func ProcessPayment(paymentBytes []byte, ctx context.Context, theBestURLEver string, requestedAt string) (map[string]any, bool) {
 	var payment map[string]any
 	if err := json.Unmarshal(paymentBytes, &payment); err != nil {
 		return nil, false
 	}
 
-	// payment["correlationId"], _ = newUUID()
-
-	now := time.Now().UTC()
-	isoString := "2006-01-02T15:04:05.000Z"
-	payment["requestedAt"] = now.Format(isoString)
+	payment["requestedAt"] = requestedAt
 
 	paymentBytes, err := json.Marshal(payment)
 	if err != nil {

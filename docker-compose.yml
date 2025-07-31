@@ -21,7 +21,10 @@ services:
           memory: "15MB"
 
   rinha-api-1:
-    image: jhamiltonjunior/rinha-de-backend-go-mongo:latest
+    # image: jhamiltonjunior/rinha-de-backend-go-mongo:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: rinha-api-1
     environment:
       - RUN_VERIFY_PAYMENT_SERVICE=true
@@ -38,14 +41,17 @@ services:
       - payment-processor
     volumes:
       - ./:/app
-    deploy:
-      resources:
-        limits:
-          cpus: "0.25"
-          memory: "30MB"
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: "0.25"
+    #       memory: "30MB"
 
   rinha-api-2:
-    image: jhamiltonjunior/rinha-de-backend-go-mongo:latest
+    # image: jhamiltonjunior/rinha-de-backend-go-mongo:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: rinha-api-2
     environment:
       - APP_PORT=3000
@@ -61,14 +67,17 @@ services:
       - payment-processor
     volumes:
       - ./:/app
-    deploy:
-      resources:
-        limits:
-          cpus: "0.25"
-          memory: "30MB"
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: "0.25"
+    #       memory: "30MB"
 
   rinha-api-3:
-    image: jhamiltonjunior/rinha-de-backend-go-mongo:latest
+    # image: jhamiltonjunior/rinha-de-backend-go-mongo:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: rinha-api-3
     environment:
       - APP_PORT=3000
@@ -84,15 +93,29 @@ services:
       - payment-processor
     volumes:
       - ./:/app
-    deploy:
-      resources:
-        limits:
-          cpus: "0.25"
-          memory: "30MB"
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: "0.25"
+    #       memory: "30MB"
 
   redis:
     image: redis:7.2.4-alpine
     container_name: redis_cache
+    networks:
+      - app-network
+    volumes:
+      - redis-data:/data
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: redis_commander
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    depends_on:
+      - redis
     networks:
       - app-network
 
@@ -111,3 +134,6 @@ networks:
     driver: bridge
   payment-processor:
     external: true
+
+volumes:
+  redis-data:

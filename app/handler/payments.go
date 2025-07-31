@@ -28,9 +28,12 @@ func Payments(ctx *fasthttp.RequestCtx) {
 	cxt, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
+	now := time.Now().UTC()
+	isoString := "2006-01-02T15:04:05.000Z"
 	paymentWorker := worker.PaymentWorker{
 		Body:              bodyCopy,
 		VouTeDarOContexto: cxt,
+		RequestedAt:      now.Format(isoString),
 	}
 
 	select {
@@ -46,14 +49,14 @@ func PaymentsSummary(ctx *fasthttp.RequestCtx) {
 	to := ctx.QueryArgs().Peek("to")
 
 	if len(from) == 0 {
-		from = []byte("1970-01-01T00:00:00Z")
+		from = []byte("1970-01-01T00:00:00.000Z")
 	}
 
 	if len(to) == 0 {
-		to = []byte("9999-12-31T23:59:59Z")
+		to = []byte("9999-12-31T23:59:00.000Z")
 	}
 
-	payments, err := database.GetPaymentHistory(database.MongoClient, string(from), string(to))
+	payments, err := database.GetPaymentHistoryInMemory(database.RedisClient, string(from), string(to))
 	if err != nil {
 		fmt.Println("Erro ao buscar histórico de pagamentos:", err)
 		sendJSONResponse(ctx, fasthttp.StatusInternalServerError)
@@ -89,5 +92,6 @@ func PaymentsSummary(ctx *fasthttp.RequestCtx) {
 }
 
 func PaymentsPurge(ctx *fasthttp.RequestCtx) {
+	database.PurgePaymentHistoryInMemory(database.RedisClient)
 	sendJSONResponse(ctx, fasthttp.StatusAccepted)
 }

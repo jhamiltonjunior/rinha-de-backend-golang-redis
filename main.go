@@ -10,10 +10,9 @@ import (
 )
 
 func main() {
-	client := database.InitializeMongoDB()
 	clientRedis := database.InitializeRedis()
 
-	worker.InitializeWorker(client, clientRedis)
+	worker.InitializeWorker(clientRedis)
 
 	appPort := os.Getenv("APP_PORT")
 	if appPort == "" {
