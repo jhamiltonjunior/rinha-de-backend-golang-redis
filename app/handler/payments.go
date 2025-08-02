@@ -28,7 +28,7 @@ func Payments(ctx *fasthttp.RequestCtx) {
 	sendJSONResponse(ctx, fasthttp.StatusAccepted)
 
 	go func() {
-		cxt, cancel := context.WithTimeout(ctx, 15*time.Second)
+		cxt, cancel := context.WithTimeout(ctx, 105*time.Second)
 		defer cancel()
 
 		now := time.Now().UTC()

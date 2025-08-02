@@ -14,11 +14,11 @@ services:
       - rinha-api-3
     networks:
       - app-network
-    deploy:
-      resources:
-        limits:
-          cpus: "0.4"
-          memory: "20MB"
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: "0.4"
+    #       memory: "20MB"
 
   rinha-api-1:
     # image: jhamiltonjunior/rinha-de-backend-go-mongo:latest

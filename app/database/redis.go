@@ -54,51 +54,34 @@ func CreatePaymentHistoryInMemory(client *redis.Client, paymentData map[string]a
 }
 
 func GetPaymentHistoryInMemory(client *redis.Client, from, to string) ([]PaymentHistory, error) {
-	// isoString := "2006-01-02T15:04:05.000Z"
 	fromTime, err := time.Parse(utils.LayoutDate, from)
 	if err != nil {
 		log.Printf("Erro ao analisar data 'from': %v", err)
 		return nil, err
 	}
-
 	toTime, err := time.Parse(utils.LayoutDate, to)
 	if err != nil {
 		log.Printf("Erro ao analisar data 'to': %v", err)
 		return nil, err
 	}
 
-	ctx := context.Background()
-	key1 := "payment_history_1"
-	key2 := "payment_history_2"
-	key3 := "payment_history_3"
-	key4 := "payment_history_4"
+	fromNum := fromTime.UnixNano()
+	toNum := toTime.UnixNano()
 
-	dataList, err := client.LRange(ctx, key1, 0, -1).Result()
-	if err != nil {
-		log.Printf("Erro ao recuperar histórico do Redis: %v", err)
-		return nil, err
+	ctx := context.Background()
+	keys := []string{"payment_history_1", "payment_history_2", "payment_history_3", "payment_history_4"}
+
+	var dataList []string
+	for _, key := range keys {
+		list, err := client.LRange(ctx, key, 0, -1).Result()
+		if err != nil {
+			log.Printf("Erro ao recuperar histórico do Redis para %s: %v", key, err)
+			return nil, err
+		}
+		dataList = append(dataList, list...)
 	}
-	dataList2, err := client.LRange(ctx, key2, 0, -1).Result()
-	if err != nil {
-		log.Printf("Erro ao recuperar histórico do Redis: %v", err)
-		return nil, err
-	}
-	dataList3, err := client.LRange(ctx, key3, 0, -1).Result()
-	if err != nil {
-		log.Printf("Erro ao recuperar histórico do Redis: %v", err)
-		return nil, err
-	}
-	dataList4, err := client.LRange(ctx, key4, 0, -1).Result()
-	if err != nil {
-		log.Printf("Erro ao recuperar histórico do Redis: %v", err)
-		return nil, err
-	}
-	dataList = append(dataList, dataList4...)
-	dataList = append(dataList, dataList2...)
-	dataList = append(dataList, dataList3...)
 
 	var filteredHistory []PaymentHistory
-
 	for _, item := range dataList {
 		var entry map[string]any
 		if err := json.Unmarshal([]byte(item), &entry); err != nil {
@@ -115,7 +98,9 @@ func GetPaymentHistoryInMemory(client *redis.Client, from, to string) ([]Payment
 			continue
 		}
 
-		if entryTime.After(fromTime) && entryTime.Before(toTime) {
+		entryNum := entryTime.UnixNano()
+
+		if entryNum > fromNum && entryNum < toNum {
 			payment := PaymentHistory{
 				CorrelationId: entry["correlationId"].(string),
 				Amount:        entry["amount"].(float64),
@@ -131,12 +116,23 @@ func GetPaymentHistoryInMemory(client *redis.Client, from, to string) ([]Payment
 
 func PurgePaymentHistoryInMemory(client *redis.Client) {
 	ctx := context.Background()
-	key := "payment_history"
+	// key := "payment_history"
 
-	err := client.Del(ctx, key).Err()
-	if err != nil {
-		log.Printf("Erro ao limpar histórico de pagamentos: %v", err)
-	} else {
-		fmt.Println("Histórico de pagamentos limpo com sucesso.")
+	keys := []string{"payment_history_1", "payment_history_2", "payment_history_3", "payment_history_4"}
+
+	for _, k := range keys {
+		err := client.Del(ctx, k).Err()
+		if err != nil {
+			log.Printf("Erro ao limpar histórico de pagamentos: %v", err)
+		} else {
+			fmt.Printf("Histórico de pagamentos '%s' limpo com sucesso.\n", k)
+		}
 	}
+
+	// err := client.Del(ctx, key).Err()
+	// if err != nil {
+	// 	log.Printf("Erro ao limpar histórico de pagamentos: %v", err)
+	// } else {
+	// 	fmt.Println("Histórico de pagamentos limpo com sucesso.")
+	// }
 }

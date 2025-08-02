@@ -27,7 +27,7 @@ var (
 func InitializeWorker(client *redis.Client) {
 	defaultURL := os.Getenv("PAYMENT_PROCESSOR_URL_DEFAULT")
 	fallbackURL := os.Getenv("PAYMENT_PROCESSOR_URL_FALLBACK")
-	const numWorkers = 50
+	const numWorkers = 20
 
 	for i := 1; i <= numWorkers; i++ {
 		go workerLoop(client, defaultURL, fallbackURL)
@@ -44,8 +44,9 @@ func workerFunc(client *redis.Client, defaultURL, fallbackURL string, payment Pa
 		database.CreatePaymentHistoryInMemory(client, body, "default")
 		return true
 	}
-
-	if payment.RetryCount < 5 {
+	
+	if payment.RetryCount <= 15 {
+		// fmt.Println(payment.RetryCount)
 		return false
 	}
 
@@ -64,6 +65,8 @@ func workerLoop(client *redis.Client, defaultURL, fallbackURL string) {
 			SegureOChann2 <- PaymentWorker{
 				Body:              payment.Body,
 				VouTeDarOContexto: context.TODO(),
+				RetryCount:        payment.RetryCount,
+				RequestedAt:       payment.RequestedAt,
 			}
 		}
 	}
@@ -72,7 +75,7 @@ func workerLoop(client *redis.Client, defaultURL, fallbackURL string) {
 func retryworkLoop(client *redis.Client, defaultURL, fallbackURL string) {
 	for payment := range SegureOChann2 {
 		func(payment PaymentWorker) {
-			cxt, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			cxt, cancel := context.WithTimeout(context.Background(), 105*time.Second)
 			defer cancel()
 			payment.VouTeDarOContexto = cxt
 
