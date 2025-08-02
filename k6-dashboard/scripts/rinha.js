@@ -18,7 +18,7 @@ import {
 // https://mikemcl.github.io/big.js/
 import Big from "https://cdn.jsdelivr.net/npm/big.js@7.0.1/big.min.js";
 
-const MAX_REQUESTS = __ENV.MAX_REQUESTS ?? 500;
+const MAX_REQUESTS = __ENV.MAX_REQUESTS ?? 550;
 
 export const options = {
   summaryTrendStats: [
@@ -232,6 +232,8 @@ export async function checkPaymentsConsistency() {
   paymentsInconsistencyCounter.add(inconsistencies);
 
   if (inconsistencies > 0) {
+    console.warn(`${from} ${to}`);
+    console.warn(`?from=${from}&to=${to}`);
     console.warn(`${inconsistencies} inconsistências encontradas.`);
   }
 

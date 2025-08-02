@@ -20,14 +20,14 @@ type PaymentWorker struct {
 }
 
 var (
-	SegureOChann  = make(chan PaymentWorker, 3000)
-	SegureOChann2 = make(chan PaymentWorker, 3000)
+	SegureOChann  = make(chan PaymentWorker, 4000)
+	SegureOChann2 = make(chan PaymentWorker, 4000)
 )
 
 func InitializeWorker(client *redis.Client) {
 	defaultURL := os.Getenv("PAYMENT_PROCESSOR_URL_DEFAULT")
 	fallbackURL := os.Getenv("PAYMENT_PROCESSOR_URL_FALLBACK")
-	const numWorkers = 20
+	const numWorkers = 50
 
 	for i := 1; i <= numWorkers; i++ {
 		go workerLoop(client, defaultURL, fallbackURL)
@@ -45,9 +45,9 @@ func workerFunc(client *redis.Client, defaultURL, fallbackURL string, payment Pa
 		return true
 	}
 
-	// if payment.RetryCount <= 10 {
-	// 	return false
-	// }
+	if payment.RetryCount < 5 {
+		return false
+	}
 
 	body, ok = ProcessPayment(payment.Body, payment.VouTeDarOContexto, fallbackURL, payment.RequestedAt)
 	if ok {
@@ -71,20 +71,16 @@ func workerLoop(client *redis.Client, defaultURL, fallbackURL string) {
 
 func retryworkLoop(client *redis.Client, defaultURL, fallbackURL string) {
 	for payment := range SegureOChann2 {
-		// if payment.RetryCount >= 20 {
-		// 	continue
-		// }
-
-		func() {
+		func(payment PaymentWorker) {
 			cxt, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 			payment.VouTeDarOContexto = cxt
 
 			if !workerFunc(client, defaultURL, fallbackURL, payment) {
-				payment.RetryCount++
+				payment.RetryCount = payment.RetryCount + 1
 				SegureOChann2 <- payment
 			}
-		}()
+		}(payment)
 	}
 }
 

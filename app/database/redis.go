@@ -7,10 +7,14 @@ import (
 	"log"
 	"time"
 
+	"github.com/jhamiltonjunior/rinha-de-backend/app/utils"
 	"github.com/redis/go-redis/v9"
 )
 
-var RedisClient *redis.Client
+var (
+	RedisClient *redis.Client
+	Key         = 0
+)
 
 func InitializeRedis() *redis.Client {
 	RedisClient = redis.NewClient(&redis.Options{
@@ -20,15 +24,13 @@ func InitializeRedis() *redis.Client {
 		Protocol: 2,
 	})
 
-	// RedisClient.Set(context.Background(), "payment_history", "", 0).Err()
-
 	return RedisClient
 }
 
 func CreatePaymentHistoryInMemory(client *redis.Client, paymentData map[string]any, typeService string) {
 	ctx := context.Background()
 
-	key := "payment_history"
+	keys := []string{"payment_history_1", "payment_history_2", "payment_history_3", "payment_history_4"}
 
 	newEntry := map[string]any{
 		"correlationId": paymentData["correlationId"],
@@ -43,35 +45,57 @@ func CreatePaymentHistoryInMemory(client *redis.Client, paymentData map[string]a
 		return
 	}
 
-	fmt.Printf("Adding entry to payment history: %v\n", newEntry)
-	err = client.LPush(ctx, key, entryBytes).Err()
+	err = client.LPush(ctx, keys[Key], entryBytes).Err()
 	if err != nil {
 		log.Printf("Erro ao adicionar entrada ao histórico de pagamentos: %v", err)
 	}
+
+	Key = (Key + 1) % len(keys)
 }
 
 func GetPaymentHistoryInMemory(client *redis.Client, from, to string) ([]PaymentHistory, error) {
-	isoString := "2006-01-02T15:04:05.000Z"
-	fromTime, err := time.Parse(isoString, from)
+	// isoString := "2006-01-02T15:04:05.000Z"
+	fromTime, err := time.Parse(utils.LayoutDate, from)
 	if err != nil {
 		log.Printf("Erro ao analisar data 'from': %v", err)
 		return nil, err
 	}
 
-	toTime, err := time.Parse(isoString, to)
+	toTime, err := time.Parse(utils.LayoutDate, to)
 	if err != nil {
 		log.Printf("Erro ao analisar data 'to': %v", err)
 		return nil, err
 	}
 
 	ctx := context.Background()
-	key := "payment_history"
+	key1 := "payment_history_1"
+	key2 := "payment_history_2"
+	key3 := "payment_history_3"
+	key4 := "payment_history_4"
 
-	dataList, err := client.LRange(ctx, key, 0, -1).Result()
+	dataList, err := client.LRange(ctx, key1, 0, -1).Result()
 	if err != nil {
 		log.Printf("Erro ao recuperar histórico do Redis: %v", err)
 		return nil, err
 	}
+	dataList2, err := client.LRange(ctx, key2, 0, -1).Result()
+	if err != nil {
+		log.Printf("Erro ao recuperar histórico do Redis: %v", err)
+		return nil, err
+	}
+	dataList3, err := client.LRange(ctx, key3, 0, -1).Result()
+	if err != nil {
+		log.Printf("Erro ao recuperar histórico do Redis: %v", err)
+		return nil, err
+	}
+	dataList4, err := client.LRange(ctx, key4, 0, -1).Result()
+	if err != nil {
+		log.Printf("Erro ao recuperar histórico do Redis: %v", err)
+		return nil, err
+	}
+	dataList = append(dataList, dataList4...)
+	dataList = append(dataList, dataList2...)
+	dataList = append(dataList, dataList3...)
 
 	var filteredHistory []PaymentHistory
 
@@ -86,7 +110,7 @@ func GetPaymentHistoryInMemory(client *redis.Client, from, to string) ([]Payment
 			continue
 		}
 
-		entryTime, err := time.Parse(isoString, requestedAtStr)
+		entryTime, err := time.Parse(utils.LayoutDate, requestedAtStr)
 		if err != nil {
 			continue
 		}

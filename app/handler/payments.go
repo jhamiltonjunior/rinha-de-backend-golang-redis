@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jhamiltonjunior/rinha-de-backend/app/database"
+	"github.com/jhamiltonjunior/rinha-de-backend/app/utils"
 	"github.com/jhamiltonjunior/rinha-de-backend/app/worker"
 	"github.com/valyala/fasthttp"
 )
@@ -24,24 +25,23 @@ type TypeDetails struct {
 func Payments(ctx *fasthttp.RequestCtx) {
 	bodyCopy := make([]byte, len(ctx.PostBody()))
 	copy(bodyCopy, ctx.PostBody())
+	sendJSONResponse(ctx, fasthttp.StatusAccepted)
 
-	cxt, cancel := context.WithTimeout(ctx, 15*time.Second)
-	defer cancel()
+	go func() {
+		cxt, cancel := context.WithTimeout(ctx, 15*time.Second)
+		defer cancel()
 
-	now := time.Now().UTC()
-	isoString := "2006-01-02T15:04:05.000Z"
-	paymentWorker := worker.PaymentWorker{
-		Body:              bodyCopy,
-		VouTeDarOContexto: cxt,
-		RequestedAt:      now.Format(isoString),
-	}
+		now := time.Now().UTC()
 
-	select {
-	case worker.SegureOChann <- paymentWorker:
-		sendJSONResponse(ctx, fasthttp.StatusAccepted)
-	default:
-		sendJSONResponse(ctx, fasthttp.StatusTooManyRequests)
-	}
+		paymentWorker := worker.PaymentWorker{
+			Body:              bodyCopy,
+			VouTeDarOContexto: cxt,
+			RequestedAt:       now.Format(utils.LayoutDate),
+			RetryCount:        0,
+		}
+
+		worker.SegureOChann <- paymentWorker
+	}()
 }
 
 func PaymentsSummary(ctx *fasthttp.RequestCtx) {
